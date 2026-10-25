@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>ESP32 MPU6050 Monitor</title>
+  <title>ESP32 MPU6050</title>
 
-  <!-- iOS / PWA Meta Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="MPU6050" />
   <meta name="theme-color" content="#12161a" />
 
-  <!-- Embedded Web App Manifest (Single-File Requirement) -->
+  <!-- Embedded Web App Manifest -->
   <link rel="manifest" href='data:application/manifest+json,{
     "name": "ESP32 MPU6050 Monitor",
     "short_name": "MPU6050",
@@ -20,13 +19,13 @@
     "background_color": "#12161a",
     "theme_color": "#12161a",
     "icons": [{
-      "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22 width=%22192%22 height=%22192%22><rect width=%22192%22 height=%22192%22 fill=%22%23209cee%22/><text x=%2250%%22 y=%2255%%22 font-size=%2280%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22sans-serif%22 dy=%22.3em%22>✛</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22 width=%22192%22 height=%22192%22><rect width=%22192%22 height=%22192%22 fill=%22%2300d1b2%22/><text x=%2250%%22 y=%2255%%22 font-size=%2280%22 text-anchor=%22middle%22 fill=%22white%22 dy=%22.3em%22>⚡</text></svg>",
       "sizes": "192x192",
       "type": "image/svg+xml"
     }]
   }' />
 
-  <!-- Bulma 1.0 CSS CDN (Native Dark Mode Support) -->
+  <!-- Bulma 1.0 CSS CDN -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css" />
 
   <style>
@@ -36,6 +35,7 @@
       flex-direction: column;
       user-select: none;
       -webkit-user-select: none;
+      background-color: #12161a;
     }
     .gyro-container {
       position: relative;
@@ -45,30 +45,29 @@
       border-radius: 50%;
       border: 3px solid #00d1b2;
       overflow: hidden;
-      background-color: #0b0f14;
-      box-shadow: 0 0 20px rgba(0, 209, 178, 0.2);
+      background-color: #000;
+      box-shadow: 0 0 25px rgba(0, 209, 178, 0.25);
     }
-    /* Artificial Horizon Sky/Ground */
     .horizon {
       position: absolute;
-      width: 400px;
-      height: 400px;
-      top: -90px;
-      left: -90px;
+      width: 440px;
+      height: 440px;
+      top: -110px;
+      left: -110px;
       background: linear-gradient(to bottom, #1976d2 50%, #5d4037 50%);
-      transition: transform 0.05s linear;
-      transform-origin: center center;
+      will-change: transform;
+      transform: translate3d(0, 0, 0);
     }
     .crosshair {
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 100px;
+      width: 90px;
       height: 4px;
       background-color: #ffe082;
       transform: translate(-50%, -50%);
       border-radius: 2px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.8);
+      box-shadow: 0 0 6px rgba(0,0,0,0.9);
       z-index: 2;
     }
     .crosshair::after {
@@ -76,24 +75,23 @@
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 12px;
-      height: 12px;
+      width: 14px;
+      height: 14px;
       border: 2px solid #ffe082;
       border-radius: 50%;
       transform: translate(-50%, -50%);
     }
     .stat-value {
-      font-family: monospace;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", monospace;
       font-size: 2.2rem;
-      font-weight: bold;
+      font-weight: 700;
     }
   </style>
 </head>
 
-<body class="has-background-dark p-4">
-  <div class="container" style="max-width: 500px;">
+<body class="p-4">
+  <div class="container" style="max-width: 480px;">
     
-    <!-- Header -->
     <header class="level is-mobile mb-4">
       <div class="level-left">
         <h1 class="title is-4 has-text-light">ESP32 MPU6050</h1>
@@ -103,22 +101,17 @@
       </div>
     </header>
 
-    <!-- Notice if Web Bluetooth is missing -->
-    <div id="btAlert" class="notification is-warning is-light is-hidden">
-      <strong>Notice:</strong> Web Bluetooth is not detected. Please make sure you are running this page inside <strong>Bluefy</strong> on iOS.
-    </div>
-
-    <!-- Gyro / Artificial Horizon Visualizer -->
+    <!-- Visual Orientation Horizon -->
     <div class="box has-background-dark-bold has-text-centered mb-4">
       <div class="gyro-container">
         <div id="horizon" class="horizon"></div>
         <div class="crosshair"></div>
       </div>
-      <p class="is-size-7 has-text-grey mt-2">Visual Orientation (Roll & Pitch)</p>
+      <p class="is-size-7 has-text-grey mt-2">Zero-Lag Hardware Accelerated Render</p>
     </div>
 
-    <!-- Data Readings -->
-    <div class="columns is-mobile mb-2">
+    <!-- Stats -->
+    <div class="columns is-mobile mb-3">
       <div class="column">
         <div class="box has-background-dark-bold has-text-centered">
           <p class="heading has-text-grey">Roll</p>
@@ -133,49 +126,59 @@
       </div>
     </div>
 
-    <!-- Raw Data Log -->
-    <div class="box has-background-dark-bold mb-4 py-2 px-3">
-      <div class="level is-mobile mb-0">
-        <div class="level-left">
-          <span class="is-size-7 has-text-grey">Raw payload:</span>
-        </div>
-        <div class="level-right">
-          <span id="valRaw" class="is-size-7 has-text-warning" style="font-family: monospace;">Waiting...</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Control Buttons -->
-    <button id="btnConnect" class="button is-primary is-fullwidth is-medium mb-3">
-      Connect ESP32
-    </button>
-    <button id="btnDisconnect" class="button is-danger is-outlined is-fullwidth is-hidden mb-3">
-      Disconnect
-    </button>
+    <!-- Buttons -->
+    <button id="btnConnect" class="button is-primary is-fullwidth is-medium mb-3">Connect ESP32</button>
+    <button id="btnDisconnect" class="button is-danger is-outlined is-fullwidth is-hidden mb-3">Disconnect</button>
   </div>
 
   <script>
-    // 16-bit UUIDs mapped to standard Bluetooth Base 128-bit format
     const SERVICE_UUID = '00001234-0000-1000-8000-00805f9b34fb';
     const CHARACTERISTIC_UUID = '00005678-0000-1000-8000-00805f9b34fb';
 
     let bleDevice = null;
     let bleChar = null;
-    let isPolling = false;
 
-    // UI Elements
+    // Direct variable caching to avoid layout recalculation
+    let targetRoll = 0;
+    let targetPitch = 0;
+    let lastTextUpdate = 0;
+
     const statusTag = document.getElementById('statusTag');
     const btnConnect = document.getElementById('btnConnect');
     const btnDisconnect = document.getElementById('btnDisconnect');
     const valRoll = document.getElementById('valRoll');
     const valPitch = document.getElementById('valPitch');
-    const valRaw = document.getElementById('valRaw');
     const horizon = document.getElementById('horizon');
-    const btAlert = document.getElementById('btAlert');
 
-    // Check Web Bluetooth support (Bluefy exposes navigator.bluetooth)
-    if (!navigator.bluetooth) {
-      btAlert.classList.remove('is-hidden');
+    // 60FPS UI Render Loop decoupled from Bluetooth packets
+    function render() {
+      // Clamped translation for pitch (-45° to +45°)
+      const clampedPitch = Math.max(-45, Math.min(45, targetPitch));
+      const translateY = clampedPitch * 1.8;
+      
+      // Hardware-accelerated translate3d
+      horizon.style.transform = `translate3d(0, ${translateY}px, 0) rotate(${targetRoll}deg)`;
+
+      // Throttle text node updates to 10Hz to prevent DOM reflow lag
+      const now = performance.now();
+      if (now - lastTextUpdate > 100) {
+        valRoll.textContent = targetRoll.toFixed(1) + '°';
+        valPitch.textContent = targetPitch.toFixed(1) + '°';
+        lastTextUpdate = now;
+      }
+
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+
+    // Fast Binary Data unpacking directly from DataView (8 bytes)
+    function handleNotification(event) {
+      const dataView = event.target.value;
+      if (dataView.byteLength >= 8) {
+        // Read 32-bit floats (Little Endian from ESP32)
+        targetRoll = dataView.getFloat32(0, true);
+        targetPitch = dataView.getFloat32(4, true);
+      }
     }
 
     btnConnect.addEventListener('click', async () => {
@@ -195,9 +198,16 @@
         const service = await server.getPrimaryService(SERVICE_UUID);
         bleChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
 
-        onConnected();
+        // Start native push notifications
+        await bleChar.startNotifications();
+        bleChar.addEventListener('characteristicvaluechanged', handleNotification);
+
+        statusTag.textContent = 'Connected (Push)';
+        statusTag.className = 'tag is-success is-light';
+        btnConnect.classList.add('is-hidden');
+        btnDisconnect.classList.remove('is-hidden');
       } catch (err) {
-        console.error('Connection failed:', err);
+        console.error('BLE error:', err);
         onDisconnected();
       }
     });
@@ -209,20 +219,12 @@
       onDisconnected();
     });
 
-    function onConnected() {
-      statusTag.textContent = 'Connected';
-      statusTag.className = 'tag is-success is-light';
-      btnConnect.classList.add('is-hidden');
-      btnDisconnect.classList.remove('is-hidden');
-
-      // Start read loop
-      // Your ESP32 characteristic is set to PROPERTY_READ (no notify), so we poll it.
-      isPolling = true;
-      pollSensor();
-    }
-
     function onDisconnected() {
-      isPolling = false;
+      if (bleChar) {
+        try {
+          bleChar.removeEventListener('characteristicvaluechanged', handleNotification);
+        } catch (_) {}
+      }
       bleChar = null;
       statusTag.textContent = 'Disconnected';
       statusTag.className = 'tag is-danger is-light';
@@ -230,51 +232,10 @@
       btnDisconnect.classList.add('is-hidden');
     }
 
-    async function pollSensor() {
-      const decoder = new TextDecoder('utf-8');
-
-      while (isPolling && bleDevice && bleDevice.gatt.connected) {
-        try {
-          const value = await bleChar.readValue();
-          const str = decoder.decode(value);
-          parseData(str);
-        } catch (err) {
-          console.warn('Read error:', err);
-        }
-        // Poll every 100ms (matching the ESP32 delay)
-        await new Promise(res => setTimeout(res, 100));
-      }
-    }
-
-    function parseData(str) {
-      valRaw.textContent = str;
-
-      // Extract Roll and Pitch values from format "R=12.3,P=-4.5"
-      const match = str.match(/R=([-\d.]+),\s*P=([-\d.]+)/);
-      if (match) {
-        const roll = parseFloat(match[1]);
-        const pitch = parseFloat(match[2]);
-
-        valRoll.textContent = roll.toFixed(1) + '°';
-        valPitch.textContent = pitch.toFixed(1) + '°';
-
-        // Update Horizon Visualizer:
-        // pitch drives translateY (-80px to +80px clamped), roll drives rotation
-        const clampedPitch = Math.max(-45, Math.min(45, pitch));
-        const translateY = clampedPitch * 1.6;
-        horizon.style.transform = `translateY(${translateY}px) rotate(${roll}deg)`;
-      }
-    }
-
-    // Single-File Inline Service Worker Registration
+    // Minimalist Service Worker
     if ('serviceWorker' in navigator) {
-      const swCode = `
-        self.addEventListener('install', e => self.skipWaiting());
-        self.addEventListener('activate', e => clients.claim());
-        self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
-      `;
-      const blob = new Blob([swCode], { type: 'application/javascript' });
-      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(console.warn);
+      const sw = `self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));`;
+      navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw], {type: 'application/javascript'}))).catch(() => {});
     }
   </script>
 </body>
